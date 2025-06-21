@@ -1,0 +1,4 @@
+/sfcs
+.idea/
+.env
+*/__pycache__/
