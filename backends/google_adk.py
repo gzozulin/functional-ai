@@ -14,17 +14,22 @@ SESSION_ID = "11223344"
 class GoogleAdkBackend:
     def __init__(self):
         self.session_service = InMemorySessionService()
+        self.session = None
 
     async def create_session(self):
-        await self.session_service.create_session(
+        self.session = await self.session_service.create_session(
             app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
 
-    def create_runner(self, llm: str = None, tools=None):
+    def create_runner(self, llm: str = None, tools=None, schema=None):
         target_agent = LlmAgent(
             model=LiteLlm(model=llm),
             name="functional_ai_agent",
             instruction="You are a helpful assistant",
             description="An agent that performs tasks based on instructions",
+            output_schema=schema,
+            output_key="result",
+            disallow_transfer_to_parent=True,
+            disallow_transfer_to_peers=True,
             tools=tools)
 
         runner = Runner(
@@ -32,21 +37,20 @@ class GoogleAdkBackend:
             app_name=APP_NAME,
             session_service=self.session_service)
 
-        return runner
+        return target_agent, runner
 
     @staticmethod
     def call_agent(query: str, runner) -> str:
         content = types.Content(role='user', parts=[types.Part(text=query)])
-        final_response_text = "Agent did not produce a final response."  # Default
         for event in runner.run(user_id=USER_ID, session_id=SESSION_ID, new_message=content):
             if event.is_final_response():
                 if event.content and event.content.parts:
-                    final_response_text = event.content.parts[0].text
+                    return event.content.parts[0].text
                 elif event.actions and event.actions.escalate:
-                    final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
+                    raise RuntimeError(f"Agent escalated: {event.error_message or 'No specific message.'}")
                 break
 
-        return final_response_text
+        raise RuntimeError("No final response received from the agent.")
 
 backend = GoogleAdkBackend()  # Create a singleton instance of the backend
 

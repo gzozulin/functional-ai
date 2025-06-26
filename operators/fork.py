@@ -1,1 +1,1 @@
-# similar to loop, but not consecutive
+# not yet implemented, should be a generator?

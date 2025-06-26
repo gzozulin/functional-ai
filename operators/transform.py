@@ -4,10 +4,10 @@ from auxiliary import safe_lambda
 from backends.google_adk import get_backend
 from operators.target import Target, LlmTarget
 
-def transform(template, target: Target, llm: str = None, tools: list = None):
+def transform(template, target: Target, llm: str = None, tools: list = None, key: str = None):
     class Transform(LlmTarget):
         def __init__(self):
-            super().__init__(llm=llm, tools=tools)
+            super().__init__(llm=llm, tools=tools, key=key)
             self.template = template
             self.target = target
             self.accepted_keys = set(inspect.signature(template).parameters.keys()) \
@@ -18,7 +18,7 @@ def transform(template, target: Target, llm: str = None, tools: list = None):
 
             prompt = self.template
             if callable(self.template):
-                kwargs['trg'] = result
+                kwargs[target.key] = result
                 prompt = safe_lambda(self.template, self.accepted_keys, *args, **kwargs)
 
             return get_backend().call_agent(prompt, self.runner)

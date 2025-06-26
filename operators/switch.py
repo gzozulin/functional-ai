@@ -1,0 +1,1 @@
+# todo: functional if statement, or rather switch statement
