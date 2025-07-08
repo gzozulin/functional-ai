@@ -365,7 +365,7 @@ pseudocode = fai.transform(pseudocode_template, context_full, key="pseudo")
 The user_reply component is where everything comes together. It receives the final context, UML diagram, and pseudocode, and synthesizes a comprehensive answer to the user's request. This step doesn’t merely combine text — it also invokes query_wiki, bringing in external knowledge when necessary to enrich the reply.
 
 ```python
-user_reply = fai.join(
+user_reply = fai.parallel(
     user_reply_template, targets=[context_full, uml_chart, pseudocode],
     tools=[query_wiki])
 ```

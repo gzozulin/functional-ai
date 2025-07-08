@@ -1,33 +1,44 @@
-import inspect
+from operators import dummy
+from operators.target import Target
 
-from auxiliary import safe_lambda
-from backends.google_adk import get_backend
-from operators.target import Target, LlmTarget
-
-def loop(template, target: Target, condition, llm: str = None, tools: list = None, key: str = None):
-    class Loop(LlmTarget):
+def loop(target: Target, condition, reducer, key: str = None):
+    class Loop(Target):
         def __init__(self):
-            super().__init__(llm=llm, tools=tools, key=key)
+            super().__init__(key=key)
             self.target = target
-            self.template = template
             self.condition = condition
-            self.accepted_keys = set(inspect.signature(template).parameters.keys()) \
-                if callable(self.template) else set()
+            self.reducer = reducer
 
         def __call__(self, *args, **kwargs):
+            results = []
+
             index = 0
-            while condition(idx=index):
-                kwargs['idx'] = index
-                kwargs[target.key] = self.target(*args, **kwargs)
+            while condition(idx=index, **kwargs):
+                result = self.target(*args, **kwargs, idx=index)
+                results.append(result)
+                kwargs[target.key] = result
                 index += 1
 
-            prompt = self.template
-            if callable(self.template):
-                prompt = safe_lambda(self.template, self.accepted_keys, *args, **kwargs)
-
-            return get_backend().call_agent(prompt, self.runner)
+            return self.reducer(results)
 
     return Loop()
 
-def loopn(template, target: Target, count, llm: str = None, tools: list = None, key: str = None):
-    return loop(template, target, lambda idx: idx < count, llm, tools, key)
+def loopn(target: Target, count, key: str = None):
+    return loop(target, lambda idx: idx < count, key)
+
+def test_loop():
+    def target_func(idx):
+        return f"Iteration {idx}"
+
+    def reducer(results):
+        return " | ".join(results)
+
+    loop_target = loop(
+        target=dummy(template=target_func),
+        condition=lambda idx, **kwargs: idx < 5,
+        reducer=reducer
+    )
+
+    result = loop_target()
+    assert result == "Iteration 0 | Iteration 1 | Iteration 2 | Iteration 3 | Iteration 4", \
+        "Loop should iterate 5 times and return the correct results"

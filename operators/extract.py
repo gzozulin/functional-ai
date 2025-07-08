@@ -1,11 +1,10 @@
-import inspect
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 from trustcall import create_extractor
 
-from auxiliary import safe_lambda
+from auxiliary import safe_lambda, accepted_keys, async_llm_test
+from operators import dummy
 from operators.target import Target
 
 def extract(template, target: Target, schema: type[BaseModel], key: str = None):
@@ -13,8 +12,7 @@ def extract(template, target: Target, schema: type[BaseModel], key: str = None):
         def __init__(self):
             super().__init__(key=key)
             self.template = template
-            self.accepted_keys = set(inspect.signature(template).parameters.keys()) \
-                if callable(self.template) else set()
+            self.accepted_keys = accepted_keys(template)
             self.schema = schema
             self.target = target
 
@@ -33,3 +31,13 @@ def extract(template, target: Target, schema: type[BaseModel], key: str = None):
             return result["responses"][0]
 
     return Extract()
+
+def test_extract():
+    class Extract(BaseModel):
+        boolean: bool
+
+        def __repr__(self):
+            return f"Extract(boolean={self.boolean})"
+
+    async_llm_test(extract("Extract a bool value",
+                           target=dummy("Boolean: true"), schema=Extract))

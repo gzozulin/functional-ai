@@ -1,26 +1,20 @@
-import inspect
-
-from auxiliary import safe_lambda
-from backends.google_adk import get_backend
+from auxiliary import async_llm_test
+from operators import infer
 from operators.target import Target, LlmTarget
 
 def transform(template, target: Target, llm: str = None, tools: list = None, key: str = None):
     class Transform(LlmTarget):
         def __init__(self):
-            super().__init__(llm=llm, tools=tools, key=key)
-            self.template = template
+            super().__init__(template=template, llm=llm, tools=tools, key=key)
             self.target = target
-            self.accepted_keys = set(inspect.signature(template).parameters.keys()) \
-                if callable(self.template) else set()
 
         def __call__(self, *args, **kwargs):
-            result = target(*args, **kwargs)
-
-            prompt = self.template
-            if callable(self.template):
-                kwargs[target.key] = result
-                prompt = safe_lambda(self.template, self.accepted_keys, *args, **kwargs)
-
-            return get_backend().call_agent(prompt, self.runner)
+            kwargs[target.key] = target(*args, **kwargs)
+            return super().__call__(*args, **kwargs)
 
     return Transform()
+
+def test_transform():
+    async_llm_test(transform(
+        lambda it: f"Translate into German: {it}",
+        target=infer("Tell a short (2 sentences) story about a cat")))

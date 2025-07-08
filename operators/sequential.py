@@ -1,26 +1,48 @@
-import inspect
+from auxiliary import async_llm_test
+from operators.dummy import dummy
+from operators.infer import infer
+from operators.target import Target
 
-from auxiliary import safe_lambda
-from backends.google_adk import get_backend
-from operators.target import Target, LlmTarget
-
-def sequential(template, targets: list[Target], llm: str = None, tools: list = None, key: str = None):
-    class Loop(LlmTarget):
+def sequential(targets: list[Target], reducer, key: str = None):
+    class Sequential(Target):
         def __init__(self):
-            super().__init__(llm=llm, tools=tools, key=key)
-            self.template = template
+            super().__init__(key=key)
             self.targets = targets
-            self.accepted_keys = set(inspect.signature(template).parameters.keys()) \
-                if callable(self.template) else set()
+            self.reducer = reducer
+            assert len(self.targets) > 0, "Sequential operator requires at least one target."
 
         def __call__(self, *args, **kwargs):
+            results = {}
+
             for target in self.targets:
+                result = target(*args, **kwargs)
                 kwargs[target.key] = target(*args, **kwargs)
+                results[target.key] = result
 
-            prompt = self.template
-            if callable(self.template):
-                prompt = safe_lambda(self.template, self.accepted_keys, *args, **kwargs)
+            return self.reducer(**results)
 
-            return get_backend().call_agent(prompt, self.runner)
+    return Sequential()
 
-    return Loop()
+def test_sequential():
+    def reducer(one, two, three):
+        return f"Results: {one}, {two}, {three}"
+
+    seq = sequential(targets=[
+        dummy("One", key="one"),
+        dummy("Two", key="two"),
+        dummy("Three", key="three")
+    ], reducer=reducer)
+
+    print(seq())
+
+def test_sequential_2():
+    inf = infer(lambda one, two: f"Combine these two stories: {one} and {two}")
+
+    def reducer(one, two):
+        return inf(one=one, two=two)
+
+    seq = sequential(targets=[
+        dummy("Cat", key="one"),
+        dummy("Tree", key="two")], reducer=reducer)
+
+    async_llm_test(seq)

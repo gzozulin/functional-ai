@@ -15,6 +15,7 @@ Whether you're generating UML diagrams, refining code context, or answering user
 # Example Usage
 
 Using the library requires only a minimal setup. You define your pipeline using simple functional components, then invoke it with a request:
+
 ```python
 await get_backend().create_session()
 
@@ -24,8 +25,8 @@ context_collector = fai.infer(
 
 context_critic = fai.loopn(
     lambda context: f"Keep only code, lines & files: {wrap(context)}",
-        fai.infer(context_critic_template, tools=[list_files, cat_file], key="context"),
-        count=MAX_CTX_ITERATIONS,
+    fai.infer(context_critic_template, tools=[list_files, cat_file], key="context"),
+    count=MAX_CTX_ITERATIONS,
     key="context")
 
 context_full = fai.cache(
@@ -37,7 +38,7 @@ context_full = fai.cache(
 uml_chart = fai.transform(uml_chart_template, context_full, key="uml")
 pseudocode = fai.transform(pseudocode_template, context_full, key="pseudo")
 
-user_reply = fai.join(
+user_reply = fai.parallel(
     user_reply_template, targets=[context_full, uml_chart, pseudocode],
     tools=[query_wiki])
 

@@ -163,16 +163,14 @@ context_critic = fai.loopn(
 
 context_full = fai.cache(
     fai.sequential(
-        lambda context: f"Create a report and include all code:{wrap(context)}",
         targets=[context_collector, context_critic]),
     key="context")
 
 uml_chart = fai.transform(uml_chart_template, context_full, key="uml")
 pseudocode = fai.transform(pseudocode_template, context_full, key="pseudo")
 
-user_reply = fai.join(
-    user_reply_template, targets=[context_full, uml_chart, pseudocode],
-    tools=[query_wiki])
+user_reply = fai.parallel(
+    user_reply_template, targets=[context_full, uml_chart, pseudocode])
 
 # -------------------- Tests --------------------
 
