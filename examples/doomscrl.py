@@ -151,26 +151,26 @@ def user_reply_template(request, context, uml, pseudo):
 
 # -------------- Agent --------------------
 
-context_collector = fai.infer(
+context_collector = fai.ai_agent(
     context_collector_template, tools=[list_files, cat_file],
     key="context")
 
 context_critic = fai.loopn(
     lambda context: f"Keep only code, lines & files: {wrap(context)}",
-        fai.infer(context_critic_template, tools=[list_files, cat_file], key="context"),
+        fai.ai_agent(context_critic_template, tools=[list_files, cat_file], key="context"),
         count=MAX_CTX_ITERATIONS,
     key="context")
 
 context_full = fai.cache(
     fai.sequential(
-        targets=[context_collector, context_critic]),
+        agents=[context_collector, context_critic]),
     key="context")
 
 uml_chart = fai.transform(uml_chart_template, context_full, key="uml")
 pseudocode = fai.transform(pseudocode_template, context_full, key="pseudo")
 
 user_reply = fai.parallel(
-    user_reply_template, targets=[context_full, uml_chart, pseudocode])
+    user_reply_template, agents=[context_full, uml_chart, pseudocode])
 
 # -------------------- Tests --------------------
 

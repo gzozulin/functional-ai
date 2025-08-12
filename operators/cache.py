@@ -1,7 +1,6 @@
 import os
 
-from operators import dummy
-from operators.target import Target
+from operators.agent import Agent, simple_agent
 
 class Storage:
     def __init__(self):
@@ -39,29 +38,29 @@ class FileStorage(Storage):
     def is_empty(self):
         return not os.path.exists(self._filename)
 
-class Cache(Target):
-    def __init__(self, key, target: Target, storage: Storage):
+class Cache(Agent):
+    def __init__(self, key, agent: Agent, storage: Storage):
         super().__init__(key=key)
         self._storage = storage
-        self._target = target
+        self._agent = agent
 
     def clear(self):
         self._storage.clear()
 
     def __call__(self, *args, **kwargs):
         if self._storage.is_empty():
-            self._storage.set(self._target(*args, **kwargs))
+            self._storage.set(self._agent(*args, **kwargs))
 
         return self._storage.get()
 
-def cache(target: Target, key: str = None) -> Cache:
-    return Cache(target=target, key=key, storage=Storage())
+def cache(agent: Agent, key: str = None) -> Cache:
+    return Cache(agent=agent, key=key, storage=Storage())
 
-def store(target: Target, filename: str, key: str = None) -> Cache:
-    return Cache(target=target, key=key, storage=FileStorage(filename=filename))
+def store(agent: Agent, filename: str, key: str = None) -> Cache:
+    return Cache(agent=agent, key=key, storage=FileStorage(filename=filename))
 
 def test_cache():
-    c = cache(target=dummy("test"))
+    c = cache(agent=simple_agent("test"))
     assert c(a=1) == "test", "Cache should return the cached value on first call"
     assert c(a=2) == "test", "Cache should return the same value on subsequent calls"
 
@@ -70,11 +69,11 @@ def test_store():
     if os.path.exists(filename):
         os.remove(filename)
 
-    s = store(target=dummy("test"), filename=filename)
+    s = store(agent=simple_agent("test"), filename=filename)
     assert s(a=1) == "test", "Store should return the value on first call"
 
     with open(filename, 'r') as f:
-        assert f.read() == "test", "Stored value should match the target output"
+        assert f.read() == "test", "Stored value should match the agent output"
 
     os.remove(filename)
 

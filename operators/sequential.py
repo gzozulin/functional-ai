@@ -1,25 +1,31 @@
-from auxiliary import async_llm_test
-from operators.dummy import dummy
-from operators.infer import infer
-from operators.target import Target
+from auxiliary import async_llm_test, accepted_keys, safe_lambda
+from operators.agent import ai_agent, simple_agent
+from operators.agent import Agent
 
-def sequential(targets: list[Target], reducer, key: str = None):
-    class Sequential(Target):
+def sequential(agents: list[Agent], reducer, key: str = None):
+    class Sequential(Agent):
         def __init__(self):
             super().__init__(key=key)
-            self.targets = targets
+            self.agents = agents
             self.reducer = reducer
-            assert len(self.targets) > 0, "Sequential operator requires at least one target."
+
+            if reducer is not None:
+                self.reducer_keys = accepted_keys(self.reducer)
+
+            assert len(self.agents) > 0, "Sequential operator requires at least one agent."
 
         def __call__(self, *args, **kwargs):
             results = {}
 
-            for target in self.targets:
-                result = target(*args, **kwargs)
-                kwargs[target.key] = target(*args, **kwargs)
-                results[target.key] = result
+            for agent in self.agents:
+                result = agent(*args, **kwargs)
+                kwargs[agent.key] = agent(*args, **kwargs)
+                results[agent.key] = result
 
-            return self.reducer(**results)
+            if reducer is not None:
+                return safe_lambda(self.reducer, self.reducer_keys, **results)
+            else:
+                return None
 
     return Sequential()
 
@@ -27,22 +33,22 @@ def test_sequential():
     def reducer(one, two, three):
         return f"Results: {one}, {two}, {three}"
 
-    seq = sequential(targets=[
-        dummy("One", key="one"),
-        dummy("Two", key="two"),
-        dummy("Three", key="three")
+    seq = sequential(agents=[
+        simple_agent("One", key="one"),
+        simple_agent("Two", key="two"),
+        simple_agent("Three", key="three")
     ], reducer=reducer)
 
     print(seq())
 
 def test_sequential_2():
-    inf = infer(lambda one, two: f"Combine these two stories: {one} and {two}")
+    inf = ai_agent(lambda one, two: f"Combine these two stories: {one} and {two}")
 
     def reducer(one, two):
         return inf(one=one, two=two)
 
-    seq = sequential(targets=[
-        dummy("Cat", key="one"),
-        dummy("Tree", key="two")], reducer=reducer)
+    seq = sequential(agents=[
+        simple_agent("Cat", key="one"),
+        simple_agent("Tree", key="two")], reducer=reducer)
 
     async_llm_test(seq)

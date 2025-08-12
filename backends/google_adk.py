@@ -1,15 +1,20 @@
 from google.adk import Runner
 from google.adk.agents import LlmAgent
+from google.adk.events import Event
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 MODEL_GPT_4O = "openai/gpt-4o"
 MODEL_GPT_4O_MINI = "openai/gpt-4o-mini"
+MODEL_DEEPSEEK_CHAT = "deepseek/deepseek-chat"
 
 APP_NAME = "fun_ai"
 USER_ID = "12345"
 SESSION_ID = "11223344"
+
+def print_debug(text):
+    print(f"\033[93m{text}\033[0m")
 
 class GoogleAdkBackend:
     def __init__(self):
@@ -21,7 +26,7 @@ class GoogleAdkBackend:
             app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
 
     def create_runner(self, llm: str = None, tools=None, schema=None):
-        target_agent = LlmAgent(
+        agent = LlmAgent(
             model=LiteLlm(model=llm),
             name="functional_ai_agent",
             instruction="You are a helpful assistant",
@@ -33,16 +38,27 @@ class GoogleAdkBackend:
             tools=tools)
 
         runner = Runner(
-            agent=target_agent,
+            agent=agent,
             app_name=APP_NAME,
             session_service=self.session_service)
 
-        return target_agent, runner
+        return agent, runner
+
+    @staticmethod
+    def print_event(event: Event):
+        for part in event.content.parts:
+            if part.function_call is not None:
+                print_debug(f'Tool call >>> {part.function_call.name}({part.function_call.args})')
+            elif part.function_response is not None:
+                print_debug(f'Tool response >>> {part.function_response.response["result"][:100]}...')
+            elif part.text is not None:
+                print_debug(f'LLM text >>> {part.text[:100]}...')
 
     @staticmethod
     def call_agent(query: str, runner) -> str:
         content = types.Content(role='user', parts=[types.Part(text=query)])
         for event in runner.run(user_id=USER_ID, session_id=SESSION_ID, new_message=content):
+            GoogleAdkBackend.print_event(event)
             if event.is_final_response():
                 if event.content and event.content.parts:
                     return event.content.parts[0].text

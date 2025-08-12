@@ -2,9 +2,9 @@ import asyncio
 import os
 
 import operators as fai
-from auxiliary import print_yellow, print_blue, print_green, async_llm_test, print_dash
+from auxiliary import print_debug_yellow, print_llm_blue, print_success_green, async_llm_test, print_dash
 from backends.google_adk import get_backend, MODEL_GPT_4O_MINI
-from operators import Target
+from operators import Agent
 
 # --------------- Tools ---------------
 
@@ -150,45 +150,45 @@ User's Response:\n\n{response}
 
 # --------------- Universe ---------------
 
-universe = fai.cache(fai.infer(template="Create a setting for a Sci-Fi universe"))
-universe_details = fai.transform(universe_details_template, target=universe)
+universe = fai.cache(fai.ai_agent(template="Create a setting for a Sci-Fi universe"))
+universe_details = fai.transform(universe_details_template, agent=universe)
 
-def universe_details_mapper(it: str) -> list[Target]:
+def universe_details_mapper(it: str) -> list[Agent]:
     details = it.splitlines()
 
     prompts = [universe_detail_report_template(detail)
                for detail in details if detail.strip()]
 
     return [fai.catch(
-                target=fai.infer(template=prompt),
-                exception=fai.infer(template=prompt, llm=MODEL_GPT_4O_MINI))
+                agent=fai.ai_agent(template=prompt),
+                exception=fai.ai_agent(template=prompt, llm=MODEL_GPT_4O_MINI))
             for prompt in prompts]
 
 def universe_full_reducer(it: list[str]) -> str:
     prompt = universe_full_report_template(it)
-    return fai.infer(template=prompt)()
+    return fai.ai_agent(template=prompt)()
 
 setting = fai.store(fai.fork(
-    target=universe_details,
+    agent=universe_details,
     mapper=universe_details_mapper,
     reducer=universe_full_reducer), key="sett", filename=".setting")
 
 # --------------- Story ---------------
 
 story = fai.store(
-    fai.transform(story_prompt_template, target=setting), filename=".story")
-story_paragraph = fai.transform(story_paragraph_template, target=story)
+    fai.transform(story_prompt_template, agent=setting), filename=".story")
+story_paragraph = fai.transform(story_paragraph_template, agent=story)
 
 practice_rule = fai.cache(
-    fai.infer(practice_rule_template, tools=[load_profile]), key="rule")
+    fai.ai_agent(practice_rule_template, tools=[load_profile]), key="rule")
 
 task_provider = fai.cache(
     fai.ai_parallel(
-        task_provider_template, targets=[setting, practice_rule]), key="task")
+        task_provider_template, agents=[setting, practice_rule]), key="task")
 
 response_examiner = fai.ai_parallel(
     response_examiner_template,
-    targets=[practice_rule, task_provider],
+    agents=[practice_rule, task_provider],
     tools=[update_profile, load_profile])
 
 # --------------- Tests ---------------
@@ -225,15 +225,15 @@ if __name__ == '__main__':
             if story_end in paragraph:
                 print("The story has ended.")
                 break
-            print_blue(paragraph)
+            print_llm_blue(paragraph)
             print_dash()
 
             rule = practice_rule()
-            print_yellow(rule)
+            print_debug_yellow(rule)
             print_dash()
 
             task = task_provider()
-            print_yellow(task)
+            print_debug_yellow(task)
             print_dash()
 
             user_response = input()
@@ -242,7 +242,7 @@ if __name__ == '__main__':
                 break
 
             feedback = response_examiner(response=user_response)
-            print_green(feedback)
+            print_success_green(feedback)
             print_dash()
 
             paragraph_no += 1

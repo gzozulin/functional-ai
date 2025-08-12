@@ -1,6 +1,5 @@
-from .target import Target
+from .agent import Agent, simple_agent
 
-from .dummy import dummy
 from .cache import cache
 from .cache import store
 
@@ -12,6 +11,6 @@ from .sequential import sequential
 from .parallel import parallel, ai_parallel
 from .fork import fork
 
-from .infer import infer
+from .agent import ai_agent
 from .transform import transform
 from .extract import extract

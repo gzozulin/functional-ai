@@ -1,30 +1,29 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_deepseek import ChatDeepSeek
 from pydantic import BaseModel
 from trustcall import create_extractor
 
 from auxiliary import safe_lambda, accepted_keys, async_llm_test
-from operators import dummy
-from operators.target import Target
+from operators.agent import Agent, simple_agent
 
-def extract(template, target: Target, schema: type[BaseModel], key: str = None):
-    class Extract(Target):
+def extract(template, agent: Agent, schema: type[BaseModel], key: str = None):
+    class Extract(Agent):
         def __init__(self):
             super().__init__(key=key)
             self.template = template
             self.accepted_keys = accepted_keys(template)
             self.schema = schema
-            self.target = target
+            self.agent = agent
 
         def __call__(self, *args, **kwargs):
-            result = target(*args, **kwargs)
+            result = agent(*args, **kwargs)
 
             prompt = self.template
             if callable(self.template):
-                kwargs[self.target.key] = result
+                kwargs[self.agent.key] = result
                 prompt = safe_lambda(self.template, self.accepted_keys, *args, **kwargs)
 
-            llm = ChatOpenAI(model="gpt-4o")  # Default to GPT-4O
+            llm = ChatDeepSeek(model="deepseek-chat")
             extractor = create_extractor(llm, tools=[self.schema])
             prompt_template = ChatPromptTemplate([('system', prompt)])
             result = extractor.invoke(prompt_template.format())
@@ -40,4 +39,4 @@ def test_extract():
             return f"Extract(boolean={self.boolean})"
 
     async_llm_test(extract("Extract a bool value",
-                           target=dummy("Boolean: true"), schema=Extract))
+                           agent=simple_agent("Boolean: true"), schema=Extract))

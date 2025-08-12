@@ -1,22 +1,21 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from operators.dummy import dummy
-from operators.target import Target
+from operators.agent import Agent, simple_agent
 
-def fork(target: Target, mapper, reducer, key: str = None) -> Target:
-    class Fork(Target):
+def fork(agent: Agent, mapper, reducer, key: str = None) -> Agent:
+    class Fork(Agent):
         def __init__(self):
             super().__init__(key=key)
-            self._target = target
+            self._agent = agent
             self._mapper = mapper
             self._reducer = reducer
 
         def __call__(self, *args, **kwargs):
-            result = {self._target.key: self._target(*args, **kwargs)}
-            targets = mapper(**result)
+            result = {self._agent.key: self._agent(*args, **kwargs)}
+            agents = mapper(**result)
 
             with ThreadPoolExecutor() as executor:
-                results = [executor.submit(trg, *args, **kwargs) for trg in targets]
+                results = [executor.submit(trg, *args, **kwargs) for trg in agents]
                 results = [f.result() for f in results]
 
             return self._reducer(results)
@@ -25,17 +24,17 @@ def fork(target: Target, mapper, reducer, key: str = None) -> Target:
 
 def test_fork():
     def example_mapper(dum):
-        return [dummy(f"Mapped 1: {dum}"),
-                dummy(f"Mapped 2: {dum}")]
+        return [simple_agent(f"Mapped 1: {dum}"),
+                simple_agent(f"Mapped 2: {dum}")]
 
     def example_reducer(mapped_results):
         return " | ".join(mapped_results)
 
-    forked_target = fork(
-        target=dummy("Hello, World!", key="dum"),
+    forked_agent = fork(
+        agent=simple_agent("Hello, World!", key="dum"),
         mapper=example_mapper,
         reducer=example_reducer,
         key="forked_example"
     )
 
-    assert forked_target() == "Mapped 1: Hello, World! | Mapped 2: Hello, World!"
+    assert forked_agent() == "Mapped 1: Hello, World! | Mapped 2: Hello, World!"

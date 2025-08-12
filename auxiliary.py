@@ -24,17 +24,20 @@ def async_llm_test(call, *args, **kwargs):
 
     asyncio.run(wrapper())
 
-def print_green(text):
+def print_success_green(text):
     print(f"\033[92m{text}\033[0m")
 
-def print_red(text):
+def print_error_red(text):
     print(f"\033[91m{text}\033[0m")
 
-def print_yellow(text):
+def print_debug_yellow(text):
     print(f"\033[93m{text}\033[0m")
 
-def print_blue(text):
+def print_llm_blue(text):
     print(f"\033[94m{text}\033[0m")
+
+def print_user_default(text):
+    print(text)
 
 def print_dash(char: str = '-', count: int = 80):
     print(char * count)

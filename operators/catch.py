@@ -1,26 +1,25 @@
-from operators import dummy
-from operators.target import Target
+from operators.agent import Agent, simple_agent
 
-def catch(target: Target, exception: Target):
-    class Catch(Target):
+def catch(agent: Agent, exception: Agent):
+    class Catch(Agent):
         def __call__(self, *args, **kwargs):
             try:
-                return target(*args, **kwargs)
+                return agent(*args, **kwargs)
             except Exception as e:
                 return exception(*args, **kwargs, error=e)
 
     return Catch()
 
 def test_catch():
-    def target_func():
+    def agent_func():
         raise ValueError("An error occurred")
 
     def handle_func(error):
         return f"Handled error! {error}"
 
     result = catch(
-        target=dummy(template=target_func),
-        exception=dummy(template=handle_func))()
+        agent=simple_agent(call=agent_func),
+        exception=simple_agent(call=handle_func))()
 
     assert "Handled error!" in result, "Catch should handle the error and return the handled value"
 
