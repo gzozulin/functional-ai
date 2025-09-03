@@ -21,7 +21,7 @@ def parallel(agents: list[Agent], reducer, key: str = None):
                 results = {agent.key: result for agent, result in zip(self.agents, results)}
 
             if reducer is not None:
-                return safe_lambda(self.reducer, self.reducer_keys, **results)
+                return safe_lambda(self.reducer, self.reducer_keys, **kwargs, **results)
             else:
                 return None
 

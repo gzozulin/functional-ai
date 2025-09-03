@@ -8,21 +8,20 @@ from backends.google_adk import get_backend
 def accepted_keys(func):
     return set(inspect.signature(func).parameters.keys()) if callable(func) else set()
 
-def safe_lambda(lmbda, keys, *args, **kwargs):
-    accepted_args = {k: v for k, v in kwargs.items() if k in keys}
+def safe_lambda(lmbda, keys, **kwargs):
+    if 'kwargs' in keys:
+        accepted_args = {k: v for k, v in kwargs.items()}  # all
+    else:
+        accepted_args = {k: v for k, v in kwargs.items() if k in keys}
+
     missing_args = keys - set(accepted_args.keys())
     missing_args = {k: None for k in missing_args}
     all_args = accepted_args | missing_args
-    return lmbda(*args, **all_args)
+    return lmbda(**all_args)
 
-def async_llm_test(call, *args, **kwargs):
+def llm_test(call, *args, **kwargs):
     load_dotenv()
-
-    async def wrapper():
-        await get_backend().create_session()
-        print(call(*args, **kwargs))
-
-    asyncio.run(wrapper())
+    print(call(*args, **kwargs))
 
 def print_success_green(text):
     print(f"\033[92m{text}\033[0m")
@@ -41,3 +40,16 @@ def print_user_default(text):
 
 def print_dash(char: str = '-', count: int = 80):
     print(char * count)
+
+def template_history(history: list[str]) -> str:
+    conversation_history = ""
+    is_llm = False
+
+    for entry in history:
+        if is_llm:
+            conversation_history += f">>> LLM:\n{entry}\n\n"
+        else:
+            conversation_history += f">>> User:\n{entry}\n\n"
+        is_llm = not is_llm
+
+    return conversation_history

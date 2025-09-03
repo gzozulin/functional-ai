@@ -1,8 +1,11 @@
+import asyncio
+import uuid
+
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.events import Event
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.sessions import InMemorySessionService
+from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types
 
 MODEL_GPT_4O = "openai/gpt-4o"
@@ -11,7 +14,6 @@ MODEL_DEEPSEEK_CHAT = "deepseek/deepseek-chat"
 
 APP_NAME = "fun_ai"
 USER_ID = "12345"
-SESSION_ID = "11223344"
 
 def print_debug(text):
     print(f"\033[93m{text}\033[0m")
@@ -21,11 +23,13 @@ class GoogleAdkBackend:
         self.session_service = InMemorySessionService()
         self.session = None
 
-    async def create_session(self):
-        self.session = await self.session_service.create_session(
-            app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
-
     def create_runner(self, llm: str = None, tools=None, schema=None):
+        session_id = str(uuid.uuid4())
+
+        session = asyncio.run(
+            self.session_service.create_session(
+                app_name=APP_NAME, user_id=USER_ID, session_id=session_id))
+
         agent = LlmAgent(
             model=LiteLlm(model=llm),
             name="functional_ai_agent",
@@ -42,7 +46,7 @@ class GoogleAdkBackend:
             app_name=APP_NAME,
             session_service=self.session_service)
 
-        return agent, runner
+        return agent, runner, session
 
     @staticmethod
     def print_event(event: Event):
@@ -55,9 +59,9 @@ class GoogleAdkBackend:
                 print_debug(f'LLM text >>> {part.text[:100]}...')
 
     @staticmethod
-    def call_agent(query: str, runner) -> str:
+    def call_agent(query: str, runner, session: Session) -> str:
         content = types.Content(role='user', parts=[types.Part(text=query)])
-        for event in runner.run(user_id=USER_ID, session_id=SESSION_ID, new_message=content):
+        for event in runner.run(user_id=USER_ID, session_id=session.id, new_message=content):
             GoogleAdkBackend.print_event(event)
             if event.is_final_response():
                 if event.content and event.content.parts:

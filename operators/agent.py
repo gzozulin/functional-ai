@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 
 from auxiliary import accepted_keys, safe_lambda
-from auxiliary import async_llm_test
-from backends.google_adk import get_backend, MODEL_DEEPSEEK_CHAT
+from auxiliary import llm_test
+from backends.google_adk import get_backend, MODEL_GPT_4O
 
 load_dotenv()
 
@@ -24,20 +24,20 @@ class LlmAgent(Agent):
         self._template_keys = accepted_keys(template)
 
         if llm is None:
-            llm = MODEL_DEEPSEEK_CHAT  # Default to DeepSeek
+            llm = MODEL_GPT_4O
 
         if tools is None:
             tools = []
 
-        self.agent, self.runner = get_backend().create_runner(llm, tools, schema)
+        self.agent, self.runner, self.session = get_backend().create_runner(llm, tools, schema)
 
     def __call__(self, *args, **kwargs):
         prompt = self._template
 
         if callable(self._template):
-            prompt = safe_lambda(self._template, self._template_keys, *args, **kwargs)
+            prompt = safe_lambda(self._template, self._template_keys, **kwargs)
 
-        return get_backend().call_agent(prompt, self.runner)
+        return get_backend().call_agent(prompt, self.runner, self.session)
 
 def simple_agent(call, key=None):
     class SimpleAgent(Agent):
@@ -48,7 +48,7 @@ def simple_agent(call, key=None):
 
         def __call__(self, *args, **kwargs):
             if callable(self.call):
-                return safe_lambda(self.call, self.call_keys, *args, **kwargs)
+                return safe_lambda(self.call, self.call_keys, **kwargs)
             return call
 
     return SimpleAgent()
@@ -60,10 +60,10 @@ def test_ai_agent():
     def template_func(x):
         return f"Tell a short (2 sentences) story about {x}"
 
-    async_llm_test(ai_agent(template="Tell a short (2 sentences) story about a tree"))
-    async_llm_test(ai_agent(template=template_func), x="a cat")
+    llm_test(ai_agent(template="Tell a short (2 sentences) story about a tree"))
+    llm_test(ai_agent(template=template_func), x="a cat")
 
 
 def test_ai_agent_2():
-    async_llm_test(ai_agent("Come up with a short 2 sentences story about a tree"))
+    llm_test(ai_agent("Come up with a short 2 sentences story about a tree"))
 

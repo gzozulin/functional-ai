@@ -1,4 +1,4 @@
-from auxiliary import async_llm_test, accepted_keys, safe_lambda
+from auxiliary import llm_test, accepted_keys, safe_lambda
 from operators.agent import ai_agent, simple_agent
 from operators.agent import Agent
 
@@ -23,7 +23,7 @@ def sequential(agents: list[Agent], reducer, key: str = None):
                 results[agent.key] = result
 
             if reducer is not None:
-                return safe_lambda(self.reducer, self.reducer_keys, **results)
+                return safe_lambda(self.reducer, self.reducer_keys, **kwargs, **results)
             else:
                 return None
 
@@ -51,4 +51,4 @@ def test_sequential_2():
         simple_agent("Cat", key="one"),
         simple_agent("Tree", key="two")], reducer=reducer)
 
-    async_llm_test(seq)
+    llm_test(seq)
