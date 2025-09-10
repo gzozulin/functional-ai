@@ -54,7 +54,7 @@ class GoogleAdkBackend:
             if part.function_call is not None:
                 print_debug(f'Tool call >>> {part.function_call.name}({part.function_call.args})')
             elif part.function_response is not None:
-                print_debug(f'Tool response >>> {part.function_response.response["result"][:100]}...')
+                print_debug(f'Tool response >>> {str(part.function_response.response)[:100]}...')
             elif part.text is not None:
                 print_debug(f'LLM text >>> {part.text[:100]}...')
 
